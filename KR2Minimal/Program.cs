@@ -1,60 +1,16 @@
 ﻿using KR2Minimal.Entities;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime;
-using System.Runtime.CompilerServices;
 
-var book1 = new Book("War and Peace", "Tolstoy", new DateTime(), "14163146", DateTime.Now, 50);
-var book2 = new Book("Dead souls", "Gogol", new DateTime(), "34532462346", DateTime.Now, 40);
-var book3 = new Book("Schatten im Paradies", "Erich Maria Remarque", new DateTime(), "34534568356346", DateTime.Now, 1);
+string[] paths = { "halls.txt", "clients.txt", "books.txt"  };
+int[] m = { 8, 3, 6 };
 
-string[] paths = { "books.txt", "halls.txt", "clients.txt" };
-int[] m = { 9, 5, 8 };
+List<Book> books = new List<Book>();
+List<Hall> halls = new List<Hall>();
+List<Client> clients = new List<Client>();
 
-for (int i = 0; i< 3; i++)
+for (int i = 0; i < 3; i++)
 {
-
+    FileLoad(paths[i], i, m[i]);
 }
-
-List<Book> books = new List<Book>() 
-{
-    book1, book2, book3
-};
-
-var hall1 = new Hall("Pushkina", "Fiction", 345);
-var hall2 = new Hall("Einshtein", "Science", 500);
-
-List<Hall> halls = new List<Hall>() 
-{ 
-    hall1, hall2
-};
-
-book1.Hall_id = hall1.Hall_id;
-book2.Hall_id = hall2.Hall_id;
-
-var client1 = new Client("Max", 346346, DateTime.Now, "456364364", null, hall1.Hall_id);
-hall1.Clients.Add(client1);
-
-var client2 = new Client("Bob", 323457, DateTime.Now, "34346345", null, hall2.Hall_id);
-hall2.Clients.Add(client2);
-
-List<Client> clients = new List<Client>() 
-{ 
-    client1, client2
-};
-
-client1.Books.Add(book1);
-book1.Clients.Add(client1);
-
-client1.Books.Add(book2);
-book2.Clients.Add(client1);
-
-client1.Books.Add(book3);
-book3.Clients.Add(client1);
-
-client2.Books.Add(book2);
-book2.Clients.Add(client2);
-
 
 while (true)
 {
@@ -77,20 +33,22 @@ while (true)
             continue;
         case 3:
             Console.Clear();
+            Console.WriteLine("Book title: \n");
             var bookname = Console.ReadLine();
 
-            IsAvailableBook(bookname);
+            var flag = IsAvailableBook(bookname);
 
             QueryEnd();
             continue;
         case 4:
             Console.Clear();
-
+            Console.WriteLine("Book author: \n");
             string author = Console.ReadLine();
+            Console.WriteLine("Hall name: \n");
             string hallname = Console.ReadLine();
 
-            AuthorBooksCount(author, hallname);
-
+            var count = AuthorBooksCount(author, hallname);
+            Console.WriteLine(author + ": " + count);
             QueryEnd();
             continue;
         case 5:
@@ -100,7 +58,67 @@ while (true)
         case 6:
             ExecuteQuery(PopularBook);
             continue;
+        case 7:
+            ExecuteQuery(AddClient);
+            continue;
+        case 8:
+            ExecuteQuery(RemoveBook);
+            continue;
+        case 9:
+            ExecuteQuery(AddBook);
+            continue;
+        case 10:
+            ExecuteQuery(WriteBooks);
+            continue;
+        case 11:
+            ExecuteQuery(WriteHalls);
+            continue;
+        case 12:
+            ExecuteQuery(WriteClients);
+            continue;
+        case 13:
+            ExecuteQuery(WriteToDatabase);
+            continue;
+        default:
+            Environment.Exit(0);
+            break;
     }
+    Console.ReadKey();
+}
+
+void WriteToDatabase()
+{
+
+}
+//10
+void WriteBooks()
+{
+    books.ForEach(b =>
+    {
+        Console.WriteLine(b.Title);
+        Console.WriteLine(b.Author);
+        Console.WriteLine(b.Count + "\n");
+    });
+}
+//11
+void WriteHalls()
+{
+    halls.ForEach(h =>
+    {
+        Console.WriteLine(h.Name);
+        Console.WriteLine(h.SeatsNumber);
+        Console.WriteLine(h.Specialization + "\n");
+    });
+}
+//12
+void WriteClients()
+{
+    clients.ForEach(c =>
+    {
+        Console.WriteLine(c.PersonalName);
+        Console.WriteLine(c.Birthday);
+        Console.WriteLine(c.TicketNumber + "\n");
+    });
 }
 
 void FileLoad(string path, int n, int m)
@@ -109,7 +127,7 @@ void FileLoad(string path, int n, int m)
     string str;
     switch (n)
     {
-        case 0:
+        case 2:
             while((str = FileIn.ReadLine()) != null)
             {
                 string[] ms = new string[m];
@@ -117,7 +135,27 @@ void FileLoad(string path, int n, int m)
                 DateTime publishingDate = DateTime.ParseExact(ms[2], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 DateTime receivingDate = DateTime.ParseExact(ms[4], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 ulong count = (ulong)int.Parse(ms[5]);
-                books.Add(new Book(ms[0], ms[1], publishingDate, ms[3], receivingDate, count));
+                var clientsNames = ms[6].Split(',');
+                var hall = halls.Find(h => h.Name == ms[7]);
+                var book = new Book(ms[0], ms[1], publishingDate, ms[3], receivingDate, count);
+                books.Add(book);
+                book.Hall_id = hall.Hall_id;
+                if(clientsNames.Length > 0 )
+                    foreach(var cn in clientsNames)
+                    {
+                        var client = clients.Find(c => c.PersonalName == cn);
+                        client.Books.Add(book);
+                        book.Clients.Add(client);
+                    }
+            }
+            break;
+        case 0:
+            while ((str = FileIn.ReadLine()) != null)
+            {
+                string[] ms = new string[m];
+                ms = str.Split(';');
+                ulong seats = (ulong)int.Parse(ms[2]);
+                halls.Add(new Hall(ms[0], ms[1], seats));
             }
             break;
         case 1:
@@ -125,22 +163,17 @@ void FileLoad(string path, int n, int m)
             {
                 string[] ms = new string[m];
                 ms = str.Split(';');
-                ulong seats = (ulong)int.Parse(ms[2]);
-                halls.Add(new Hall(ms[0], ms[1], seats));
-            }
-            break;
-        case 2:
-            while ((str = FileIn.ReadLine()) != null)
-            {
-                string[] ms = new string[m];
-                ms = str.Split(';');
-                ulong seats = (ulong)int.Parse(ms[2]);
-                halls.Add(new Hall(ms[0], ms[1], seats));
+                ulong count = (ulong)int.Parse(ms[1]);
+                DateTime birthdayDate = DateTime.ParseExact(ms[2], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                var hall = halls.Find(h => h.Name == ms[5]);
+                var guid = hall.Hall_id;
+                var client = new Client(ms[0], count, birthdayDate, ms[3], ms[4], guid);
+                clients.Add(client);
+                hall.Clients.Add(client);
             }
             break;
     }
 }
-
 
 void ExecuteQuery(Action func)
 {
@@ -155,7 +188,6 @@ void QueryEnd()
     Console.ReadKey();
     Console.Clear();
 }
-
 
 //1
 void GetClientsBooks()
@@ -173,7 +205,8 @@ void FreeSeats()
 {
     halls.ForEach(hall =>
     {
-        Console.WriteLine("Free: " + (hall.SeatsNumber - (ulong)hall.Clients.Count));
+        Console.WriteLine(hall.Name);
+        Console.WriteLine("Free: " + (hall.SeatsNumber - (ulong)hall.Clients.Count) + "\n");
     });
 }
 
@@ -181,7 +214,11 @@ void FreeSeats()
 bool IsAvailableBook(string bookName)
 {
     var book = books.Find(b => b.Title == bookName);
-
+    if(book is null)
+    {
+        Console.WriteLine("Такой книги нет");
+        return false;
+    }
     if ((ulong)book.Clients.Count == book.Count)
     {
         Console.WriteLine("Свободных экземпляров нет");
@@ -195,7 +232,11 @@ bool IsAvailableBook(string bookName)
 int AuthorBooksCount(string author, string hallname)
 {
     var hall = halls.Find(h => h.Name == hallname);
-
+    if(hall is null)
+    {
+        Console.WriteLine("Такого зала нет");
+        return 0;
+    }
     int s = (int)books.Where(book => book.Hall_id == hall.Hall_id && book.Author == author).Sum(b => (float)b.Count);
     return s;
 }
@@ -214,14 +255,90 @@ void ClietnsWithUniqueBooks()
 void PopularBook()
 {
     var popularBook = books.MaxBy(b => b.Clients.Count);
-    Console.WriteLine(popularBook.Title + " " + popularBook.Clients.Count);
+    Console.WriteLine(popularBook.Title + ", Count: " + popularBook.Clients.Count);
+}
+
+//7
+void AddClient()
+{
+    try
+    {
+        Console.WriteLine("Personal name: ");
+        var personalName = Console.ReadLine();
+        Console.WriteLine("Ticket number: ");
+        ulong ticket = (ulong)int.Parse(Console.ReadLine());
+        Console.WriteLine("Birthday date: ");
+        DateTime birthdayDate = DateTime.ParseExact(Console.ReadLine(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        Console.WriteLine("Phone: ");
+        var phone = Console.ReadLine();
+        Console.WriteLine("Education: ");
+        var education = Console.ReadLine();
+        Console.WriteLine("Hall is");
+        var hallName = Console.ReadLine();
+        var hall = halls.Find(h => h.Name == hallName);
+        clients.Add(new Client(personalName, ticket, birthdayDate, phone, education, hall.Hall_id));
+    }
+    catch
+    {
+        Console.WriteLine("Error");
+    }
+}
+
+//8
+void RemoveBook()
+{
+    Console.WriteLine("Book name: ");
+    var bookName = Console.ReadLine();
+    var book = books.Find(b => b.Title == bookName);
+    if (book is null)
+    {
+        Console.WriteLine("Error");
+    }
+    foreach(var c in book.Clients)
+    {
+        c.Books.Remove(book);
+    }
+    books.Remove(book);
+    Console.WriteLine("Book is removed");
+}
+
+//9
+void AddBook()
+{
+    Console.WriteLine("Title: ");
+    var title = Console.ReadLine();
+    Console.WriteLine("Author: ");
+    var author = Console.ReadLine();
+    Console.WriteLine("Publishing date: ");
+    DateTime publishingDate = DateTime.ParseExact(Console.ReadLine(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    Console.WriteLine("ISBN: ");
+    var isbn = Console.ReadLine();
+    Console.WriteLine("Receiving date: ");
+    DateTime receivingDate = DateTime.ParseExact(Console.ReadLine(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    Console.WriteLine("Count: ");
+    var count = (ulong)int.Parse(Console.ReadLine());
+    Console.WriteLine("Hall name: ");
+    var hallName = Console.ReadLine();
+    var book = new Book(title, author, publishingDate, isbn, receivingDate, count);
+    books.Add(book);
+    var hall = halls.Find(h => h.Name == hallName);
+    book.Hall_id = hall.Hall_id;
 }
 
 static void Frame() //метод для выбора списка запросов
 {
     Console.WriteLine("\tВыберете номер задачи\n");
-    Console.WriteLine(" 1 - Получить справку о конкретном клиенте\n");
-    Console.WriteLine(" 2 - Суммарная стоимость товара в отделе\n");
-    Console.WriteLine("\tДругие запросы");
-    Console.WriteLine("\n9 - Выход из программы");
+    Console.WriteLine(" 1 - Какие книги выданы каждому читателю\n");
+    Console.WriteLine(" 2 - Сколько свободных мест в каждом зале\n");
+    Console.WriteLine(" 3 - Можно ли выдать книгу читателю\n");
+    Console.WriteLine(" 4 - количество книг заданного автора в читальном зале\n");
+    Console.WriteLine(" 5 - читетели, взявшие книги, имеющиеся в одном экземпляре\n");
+    Console.WriteLine(" 6 - книга с максимальным рейтингом\n");
+    Console.WriteLine(" 7 - запись в библиотеку нового читателя\n");
+    Console.WriteLine(" 8 - списать старую или потерянную книгу\n");
+    Console.WriteLine(" 9 - принять книгу в фонд библиотеки\n");
+    Console.WriteLine(" 10 - все книги\n");
+    Console.WriteLine(" 11 - все залы\n");
+    Console.WriteLine(" 12 - все клиенты\n");
+    Console.WriteLine("default - Выход из программы");
 }
